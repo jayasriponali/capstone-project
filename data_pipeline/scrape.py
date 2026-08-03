@@ -314,13 +314,13 @@ def read_data_from_pandas():
         JOIN categories c ON b.category_id = c.category_id
         ORDER BY b.book_id
     ''', sqllite_connection)
-    print(f"\n[1. pd.read_sql SQL JOIN Result]:\n{sql_join_df.head()}")
+    
 
     # 2. Perform in-memory pd.merge on separate DataFrames
     df_books = pd.read_sql("SELECT * FROM books ORDER BY book_id", sqllite_connection)
     df_categories = pd.read_sql("SELECT * FROM categories", sqllite_connection)
     df_merged = pd.merge(df_books, df_categories, on="category_id")
-    print(f"\n[2. In-Memory pd.merge Result]:\n{df_merged.head()}")
+    
     df_merged.to_csv("books_and_categories.csv", index=False)
 
     # 3. Compare outputs side-by-side to show equivalence
