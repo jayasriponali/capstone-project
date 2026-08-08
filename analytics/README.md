@@ -511,8 +511,13 @@ Random Forest is the best overall choice based on the metric values observed.
 The final step was to save the complete trained pipeline to disk so it can be reused
 without retraining.
 
-I saved the Decision Tree pipeline using joblib.dump. The saved file is called
-titanic_survival_pipeline.pkl and is stored inside the analytics folder.
+Section 14 recommended Random Forest as the model to deploy, so that is the
+model I actually saved here, using the tuned hyperparameters found by
+GridSearchCV in Section 12 (max_depth 5, max_features None, n_estimators 50)
+so the saved artifact matches the written recommendation instead of quietly
+saving a different model. I saved this Random Forest pipeline using
+joblib.dump. The saved file is called titanic_survival_pipeline.pkl and is
+stored inside the analytics folder.
 
 The saved artifact includes both the full preprocessing pipeline and the trained
 classifier together as a single object. This is important because saving only the
@@ -529,13 +534,18 @@ A 38 year old female in first class who paid 71.28 pounds and boarded at Cherbou
 A female in second class with no age recorded who paid 13.00 pounds.
 
 The loaded pipeline predicted:
-First passenger: did not survive (probability 0.00).
+First passenger: did not survive (probability 0.07).
 Second passenger: survived (probability 1.00).
-Third passenger: survived with missing age handled automatically by the imputer.
+Third passenger: survived with missing age handled automatically by the imputer
+(probability 0.96).
 
-The reloaded pipeline test accuracy was 0.8156 which is exactly the same as the
-in-memory pipeline accuracy of 0.8156. The predictions on the test set were
-identical for both confirming the save and reload worked correctly.
+The reloaded pipeline test accuracy was 0.7989 which is exactly the same as the
+in-memory pipeline accuracy of 0.7989. The predictions on the test set were
+identical for both confirming the save and reload worked correctly. This number
+is the tuned Random Forest's accuracy specifically, so it is a little different
+from the 0.816 accuracy reported for the untuned Random Forest back in Section 10,
+since GridSearchCV optimized for cross-validation score rather than this exact
+test split.
 
 ---
 
