@@ -1,5 +1,18 @@
 # Zepto Catalog Benchmarking & Data Pipeline Capstone Project
 
+## Module 2 — Analytics Pipeline (`/analytics`)
+
+The analytics module covers the full Titanic data analysis and machine learning pipeline.
+See [analytics/README.md](analytics/README.md) for a section-by-section breakdown of all 15 tasks including EDA, modeling, imbalance handling, hyperparameter tuning, regression, and the saved pipeline.
+
+Key files inside `/analytics`:
+- `01_eda.ipynb` — data loading, cleaning, univariate, bivariate, and multivariate analysis
+- `02_modeling.ipynb` — classification, evaluation, imbalance handling, tuning, regression, and pipeline save
+- `titanic.csv` — committed offline fallback loadable via pd.read_csv
+- `titanic_survival_pipeline.pkl` — saved end-to-end pipeline for deployment
+
+---
+
 ## Module 1 — Data Pipeline (`/data_pipeline`)
 
 This repository contains the complete end-to-end data pipeline for catalog pricing and availability benchmarking.

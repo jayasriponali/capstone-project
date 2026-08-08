@@ -13,6 +13,19 @@ def get_conn_cursor():
     cursor = sqllite_connection.cursor()
     return sqllite_connection, cursor
 
+# Small helper so every SQL query and its output is both printed to the
+# console AND saved to a text file, since a live console print disappears
+# once the run ends and there was no persisted record of the query outputs.
+LOG_LINES = []
+
+def log(msg):
+    print(msg)
+    LOG_LINES.append(str(msg))
+
+def save_query_log():
+    with open("sql_query_log.txt", "w", encoding="utf-8") as f:
+        f.write("\n".join(LOG_LINES))
+
 def main():
 
 
@@ -95,6 +108,7 @@ def main():
     insert_into_db()
     db_queries()
     read_data_from_pandas()
+    save_query_log()
            
 # read raw scraped data, clean types, and handle messy rows via median imputation
 def clean_data():
@@ -247,42 +261,52 @@ def db_queries():
             category_id = cursor.fetchone()[0]
             print(category_id)  
             #now insert the book
-            cursor.execute('''INSERT INTO books (title, price_gbp, price_inr, rating, in_stock, category_id) 
-            VALUES(?, ?, ?, ?, ?, ?) ''', (row["title"], row["price_gbp"], row["price_inr"], row["rating"], row["in_stock"], category_id))
+            # in_stock is stored as a real 0/1 integer (SQLite's boolean
+            # convention) instead of the literal text "True"/"False" so the
+            # column is an actual boolean-like type in the database, not text.
+            in_stock_int = 1 if row["in_stock"] == "True" else 0
+            cursor.execute('''INSERT INTO books (title, price_gbp, price_inr, rating, in_stock, category_id)
+            VALUES(?, ?, ?, ?, ?, ?) ''', (row["title"], row["price_gbp"], row["price_inr"], row["rating"], in_stock_int, category_id))
             sqllite_connection.commit()
-    
+
     #1) get All categories
+    log("\n1) SELECT * FROM categories")
     cursor.execute("SELECT * FROM categories")
     results = cursor.fetchall()
     for result in results:
-        print(f"#################### all categories {result}")
+        log(f"#################### all categories {result}")
     #2) get all products uing order by
+    log("\n2) SELECT * FROM books ORDER BY price_inr DESC")
     cursor.execute("SELECT * FROM books ORDER BY price_inr DESC")
     results = cursor.fetchall()
     for result in results:
-        print(f"#################### all products sorted by price inr {result}")
+        log(f"#################### all products sorted by price inr {result}")
     #3) get products by limit
+    log("\n3) SELECT * FROM books LIMIT 10")
     cursor.execute("SELECT * FROM books LIMIT 10")
     results = cursor.fetchall()
     for result in results:
-        print(f"#################### top 10 expensive products {result}")
+        log(f"#################### top 10 expensive products {result}")
     #4) get  distinct products based on the categories
+    log("\n4) SELECT DISTINCT category_name FROM categories")
     cursor.execute("SELECT DISTINCT category_name FROM categories")
     results = cursor.fetchall()
     for result in results:
-        print(f"#################### distinct category ids from products {result}")
+        log(f"#################### distinct category ids from products {result}")
     #5) get products by
+    log("\n5) SELECT * FROM books WHERE price_inr BETWEEN 1000 AND 10000")
     cursor.execute("SELECT * FROM books WHERE price_inr BETWEEN 1000 AND 10000")
     results = cursor.fetchall()
     for result in results:
-        print(f"#################### books between 1000 and 10000 {result}" )
+        log(f"#################### books between 1000 and 10000 {result}" )
 
     #6 join categories and books
+    log("\n6) SELECT categories.category_name, books.title FROM books INNER JOIN categories ON categories.category_id = books.category_id")
     cursor.execute("SELECT categories.category_name, books.title from books INNER JOIN categories ON categories.category_id = books.category_id")
     results = cursor.fetchall()
     for result in results:
-        print(f"#################### join categories and books {result}" )
-    
+        log(f"#################### join categories and books {result}" )
+
     sqllite_connection.close()
 
 
@@ -294,17 +318,21 @@ def db_queries():
 def read_data_from_pandas():
 
     sqllite_connection, cursor = get_conn_cursor()
-    
+
     df = pd.read_sql("SELECT * FROM categories", sqllite_connection)
-    print(f" dataframe of categories:\n{df}")
+    log(f"\n dataframe of categories:\n{df}")
     df.to_csv("categories.csv", index=False)
 
+    # NOTE: this is intentionally saved as its own file (books_sorted_by_price_inr.csv)
+    # instead of "books.csv" — books.csv is the raw scrape output (Task 1) and must
+    # not be overwritten by this later SQL-export step, otherwise the raw-data
+    # artifact the pipeline started from is lost.
     df = pd.read_sql("SELECT * FROM books ORDER BY price_inr DESC", sqllite_connection)
-    print(f" dataframe of books:\n{df}")
-    df.to_csv("books.csv", index=False)
+    log(f" dataframe of books:\n{df}")
+    df.to_csv("books_sorted_by_price_inr.csv", index=False)
 
     df = pd.read_sql("SELECT * FROM books WHERE price_inr BETWEEN 1000 AND 10000", sqllite_connection)
-    print(f" dataframe of books between 1000 and 10000:\n{df}")
+    log(f" dataframe of books between 1000 and 10000:\n{df}")
     df.to_csv("books_between_1000_and_10000.csv", index=False)
 
     # 1. Fetch SQL JOIN via pd.read_sql
@@ -325,7 +353,7 @@ def read_data_from_pandas():
 
     # 3. Compare outputs side-by-side to show equivalence
     are_equal = sql_join_df["title"].equals(df_merged["title"])
-    print(f"\n comparing the pd.read_sql JOIN and pd.merge outputs (True or False) {are_equal}")
+    log(f"\n comparing the pd.read_sql JOIN and pd.merge outputs (True or False) {are_equal}")
 
     sqllite_connection.close()
 
