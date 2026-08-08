@@ -51,27 +51,32 @@ embarked had 0.22 percent missing values.
 embark_town had 0.22 percent missing values.
 deck had 77.22 percent missing values.
 
-I used a simple threshold rule to decide what to do with each one.
+**Approach (percentage-based threshold rule):** I used a simple threshold
+rule to decide what to do with each one.
 
 Under 5 percent missing means drop those rows.
 Between 5 and 30 percent missing means impute or fill the values.
 More than 30 percent missing means drop the column or treat missing as
 its own category.
 
-For embarked at 0.22 percent I dropped the 2 rows that had null values
-because losing only 2 rows out of 891 is completely fine.
+**Design Decision (embarked, 0.22%, < 5% threshold → drop rows):** For
+embarked at 0.22 percent I dropped the 2 rows that had null values because
+losing only 2 rows out of 891 is completely fine.
 
-For embark_town at 0.22 percent I did the same thing and dropped those rows.
+**Design Decision (embark_town, 0.22%, < 5% threshold → drop rows):** For
+embark_town at 0.22 percent I did the same thing and dropped those rows.
 
-For age at 19.87 percent I filled the missing values with the median age.
-The median is a good choice here because age has some very old passengers
-that would push the mean too high. The median is more stable and honest.
+**Design Decision (age, 19.87%, in the 5-30% band → median impute):** For
+age at 19.87 percent I filled the missing values with the median age. The
+median is a good choice here because age has some very old passengers that
+would push the mean too high. The median is more stable and honest.
 
-For deck at 77.22 percent I decided to drop the entire column.
-If I tried to fill 77 percent of the column I would be making up most of
-the data which is not a good idea. Dropping those rows instead would lose
-almost 80 percent of the whole dataset which is even worse. So dropping
-the column was the only sensible choice.
+**Design Decision (deck, 77.22%, > 30% threshold → drop the column):** For
+deck at 77.22 percent I decided to drop the entire column. If I tried to
+fill 77 percent of the column I would be making up most of the data which
+is not a good idea. Dropping those rows instead would lose almost 80 percent
+of the whole dataset which is even worse. So dropping the column was the
+only sensible choice.
 
 ---
 
@@ -92,8 +97,9 @@ a small number paid very high amounts. This creates a long right tail.
 The fare box plot also showed many dots far to the right which are passengers
 who paid extremely high fares for first class cabins.
 
-To count the outliers I used the IQR rule. An outlier is any value that falls
-below Q1 minus 1.5 times IQR or above Q3 plus 1.5 times IQR.
+**Approach (IQR outlier rule):** To count the outliers I used the IQR rule.
+An outlier is any value that falls below Q1 minus 1.5 times IQR or above
+Q3 plus 1.5 times IQR.
 
 For age the IQR was 13.0 with a lower bound of 2.5 and upper bound of 54.5.
 After imputing the missing ages, age had 65 outliers.
@@ -151,6 +157,7 @@ Male Third Class: survival rate around 14 percent.
 Even female passengers in third class survived at a higher rate than male
 passengers in first class. This shows sex was even more important than class.
 
+**Design Decision (exclude adult_male/alone from the correlation matrix):**
 I then computed a correlation matrix on exactly six columns: survived, pclass,
 age, sibsp, parch, and fare. I did not include adult_male or alone because
 adult_male is directly computed from sex and age and alone is computed from
@@ -228,9 +235,12 @@ priority. Together sex and class explain most of what we see in the survival dat
 
 ## Section 6 - Z-Score Standardization as an EDA Check
 
-Before doing any machine learning it is a good idea to check how standardization
-would affect the numeric features. This is just an exploratory check and does not
-feed into the modeling pipeline. The modeling section does its own train-only scaling.
+**Design Decision (EDA-only check, not reused by modeling):** Before doing
+any machine learning it is a good idea to check how standardization would
+affect the numeric features. This is just an exploratory check and does not
+feed into the modeling pipeline. The modeling section does its own
+train-only scaling with a fresh StandardScaler fit inside the Pipeline, so
+this EDA-stage scaler is never reused for anything downstream.
 
 I standardized age and fare using the z-score formula which is z equals x minus
 mean divided by standard deviation. I used StandardScaler from scikit-learn on a
@@ -256,7 +266,8 @@ Before doing any machine learning the data needs to be split into a training set
 and a testing set. The model learns from the training set and is evaluated on the
 testing set which it has never seen before.
 
-I used a stratified split with an 80 percent training and 20 percent testing ratio.
+**Design Decision (stratified split before any preprocessing):** I used a
+stratified split with an 80 percent training and 20 percent testing ratio.
 
 Stratification is important here because the survived column is not balanced.
 About 61.6 percent of passengers did not survive and only 38.4 percent survived.
@@ -280,12 +291,17 @@ The proportions match very closely which confirms stratification worked correctl
 Preprocessing means getting the data ready for the model. This includes filling
 missing values, converting text columns to numbers, and scaling numeric values.
 
-A very important rule is that every preprocessing step must be fit only on the
-training data. The test data should only be transformed using what was learned
-from the training data. Fitting on the test data or on the full dataset before
-splitting would leak test information into training which makes results misleading.
+**Design Decision (fit-on-train-only, no data leakage):** A very important
+rule is that every preprocessing step must be fit only on the training data.
+The test data should only be transformed using what was learned from the
+training data. Fitting on the test data or on the full dataset before
+splitting would leak test information into training which makes results
+misleading.
 
-I used scikit-learn's Pipeline and ColumnTransformer to handle this automatically.
+**Approach (Pipeline + ColumnTransformer enforces the rule structurally):**
+I used scikit-learn's Pipeline and ColumnTransformer to handle this
+automatically instead of relying on remembering to call fit vs. transform
+correctly by hand.
 
 The features I selected were pclass, sex, age, sibsp, parch, fare, and embarked.
 The target was survived.
@@ -382,9 +398,10 @@ class_weight to balanced. This makes the model treat each class more equally.
 Precision 0.730, Recall 0.783, F1 Score 0.755.
 
 Strategy 3 - SMOTE oversampling on training data only.
-SMOTE creates new synthetic examples of the minority class to make the training
-data more balanced. I applied SMOTE only to the training fold to avoid leaking
-test data information into the training process.
+**Design Decision (SMOTE fit on the training fold only):** SMOTE creates new
+synthetic examples of the minority class to make the training data more
+balanced. I applied SMOTE only to the training fold to avoid leaking test
+data information into the training process.
 Precision 0.740, Recall 0.783, F1 Score 0.761.
 
 Conclusion:
@@ -424,7 +441,10 @@ about 81.9 percent of cases on average during cross validation.
 The OOB score (out of bag score) was 0.8076. The OOB score is computed using the
 samples that were not included in each tree's training. It is an honest estimate of
 how well the model generalizes to new data without needing a separate validation set.
-I set oob_score=True when creating the RandomForestClassifier so this score was available.
+**Requirement (oob_score=True must be set at construction time):** I set
+oob_score=True when creating the RandomForestClassifier so this score was
+available — passing it afterward would not work, oob_score_ is only
+populated when the flag is on before fitting.
 
 ---
 
@@ -492,7 +512,8 @@ to each other.
 
 Final Recommendation:
 
-Among the three classifiers I would recommend the Random Forest for deployment.
+**Design Decision (deployment choice):** Among the three classifiers I
+would recommend the Random Forest for deployment.
 Random Forest achieved the highest accuracy at 0.816 and a strong AUC of 0.827.
 Its precision was the highest at 0.800 which means when it predicts a passenger
 survived it is usually right. It also generalizes better than a single Decision Tree

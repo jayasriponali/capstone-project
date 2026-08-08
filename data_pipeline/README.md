@@ -19,14 +19,15 @@ just for scraping so it is completely fine to use it.
 I used the requests library to download each page and BeautifulSoup with the
 html.parser to read through the HTML and pull out the pieces I needed.
 
-The scraper does not just grab one page. It goes into the category list on
-the left side of the site (div.side_categories ul li a) and visits each
-category one at a time. Inside a category it also follows the "next" button
-(li.next a) so it keeps going through every page of that category instead of
-stopping at page one.
+**Approach (multi-page, multi-category crawl):** The scraper does not just
+grab one page. It goes into the category list on the left side of the site
+(div.side_categories ul li a) and visits each category one at a time. Inside
+a category it also follows the "next" button (li.next a) so it keeps going
+through every page of that category instead of stopping at page one.
 
-I kept scraping until I had at least 60 books collected from 3 or more
-different categories, for example Travel, Mystery, and Historical Fiction.
+**Requirement (≥60 books across ≥3 categories):** I kept scraping until I
+had at least 60 books collected from 3 or more different categories, for
+example Travel, Mystery, and Historical Fiction.
 
 For every single book I grabbed 5 pieces of information:
 
@@ -56,27 +57,29 @@ numbers 1 through 5. If a rating word did not match anything in the
 dictionary I fell back to a default of 3 so the pipeline does not crash.
 
 Availability became in_stock. I checked if the lowercased text contained the
-words "in stock" and turned that into a simple True or False. When this
-value gets inserted into the SQLite books table it is stored as a real 0/1
-integer rather than the text "True"/"False", so it behaves as an actual
-boolean column in the database and not just boolean-looking text.
+words "in stock" and turned that into a simple True or False.
+
+**Design Decision (real boolean, not text):** when this value gets inserted
+into the SQLite books table it is stored as a real 0/1 integer rather than
+the text "True"/"False", so it behaves as an actual boolean column in the
+database and not just boolean-looking text.
 
 ### How I decided what to do with bad or missing data
 
 Some rows were missing important information, so I had to make some rules.
 
-Dropping rows: if a row was missing its title or its category I dropped it
-completely. These two fields are the main identifiers for a book, so a row
-without them is not really usable and would only cause problems later when
-linking to the database tables.
+**Design Decision (drop vs. fix):** Dropping rows: if a row was missing its
+title or its category I dropped it completely. These two fields are the main
+identifiers for a book, so a row without them is not really usable and would
+only cause problems later when linking to the database tables.
 
-Fixing bad prices: if a price could not be converted into a float, instead of
-dropping that row I filled it in using the median price of all the other
-valid prices I had already collected. I picked the median instead of the
-mean because it is less affected by a few very expensive or very cheap
-books, so it gives a more realistic fill-in value. If for some reason there
-were no valid prices at all to calculate a median from, I used 25.00 as a
-safe fallback number.
+**Design Decision (median imputation over mean):** Fixing bad prices: if a
+price could not be converted into a float, instead of dropping that row I
+filled it in using the median price of all the other valid prices I had
+already collected. I picked the median instead of the mean because it is
+less affected by a few very expensive or very cheap books, so it gives a
+more realistic fill-in value. If for some reason there were no valid prices
+at all to calculate a median from, I used 25.00 as a safe fallback number.
 
 The cleaned data gets saved into a new file called cleaned_books.csv.
 
@@ -87,9 +90,10 @@ The cleaned data gets saved into a new file called cleaned_books.csv.
 The prices on the site are in British pounds, so I added a step to convert
 every price into Indian Rupees as well.
 
-I used a fixed conversion rate of 1 GBP equals 105.50 INR. It is a constant
-number built into the pipeline, not something pulled live from the internet,
-so the pipeline still works even without a network connection.
+**Requirement (fixed-rate baseline, no API call):** I used a fixed
+conversion rate of 1 GBP equals 105.50 INR. It is a constant number built
+into the pipeline, not something pulled live from the internet, so the
+pipeline still works even without a network connection.
 
 The formula is simple: price_inr = price_gbp multiplied by 105.50, rounded
 to 2 decimal places.
@@ -103,8 +107,9 @@ This enriched data gets saved into cleaned_books_inr.csv.
 Once the data was clean I moved it into a real SQLite database file called
 masai-books-db.db instead of just leaving everything in one flat CSV.
 
-I split the data into two related tables so there is no repeated category
-text sitting inside every single book row.
+**Design Decision (normalized two-table schema):** I split the data into
+two related tables so there is no repeated category text sitting inside
+every single book row.
 
 categories table (the primary table):
 category_id as the primary key that auto increments.
@@ -166,10 +171,11 @@ books_sorted_by_price_inr.csv
 books_between_1000_and_10000.csv
 books_and_categories.csv
 
-On top of the CSV exports, every single query above (the query text and its
-full printed output) also gets written out to sql_query_log.txt so there is
-a permanent record of what each query returned, not just something that
-flashed by in the terminal when the script ran.
+**Design Decision (persisted query log):** on top of the CSV exports, every
+single query above (the query text and its full printed output) also gets
+written out to sql_query_log.txt so there is a permanent record of what each
+query returned, not just something that flashed by in the terminal when the
+script ran.
 
 ---
 
@@ -198,6 +204,9 @@ scrape.py is the script that does everything: scraping, cleaning, currency
 conversion, building the database, and running the SQL queries.
 books.csv is the raw scraped data straight off the website and is never
 touched again after Section 1, so it always stays the original raw export.
+**Design Decision:** the SQL export step deliberately writes to its own
+books_sorted_by_price_inr.csv instead of overwriting books.csv, so the raw
+scrape artifact is never lost.
 cleaned_books.csv is the data after cleaning and type conversion.
 cleaned_books_inr.csv is the cleaned data with the INR price column added.
 masai-books-db.db is the SQLite database with the categories and books

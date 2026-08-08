@@ -35,9 +35,10 @@ docker build -t support-assistant .
 docker run -p 7860:7860 support-assistant
 ```
 
-The Dockerfile uses python:3.10-slim which supports all required packages
-including sentence-transformers and torch. The FastAPI instance is named
-zepto_app so the CMD passes app:zepto_app to uvicorn.
+**Design Decision (python:3.10-slim base image):** the Dockerfile uses
+python:3.10-slim which supports all required packages including
+sentence-transformers and torch. The FastAPI instance is named zepto_app
+so the CMD passes app:zepto_app to uvicorn.
 
 ---
 
@@ -126,11 +127,16 @@ The full pipeline has four stages. Data flows through each one in order.
 
 When the FastAPI app starts, embed_store.py runs immediately on import.
 It walks the docs folder and reads all 8 txt files (doc_01.txt to
-doc_08.txt). Each file is treated as one document chunk. A metadata tag
-with the source filename is attached so we can trace results back to
-the original file.
+doc_08.txt).
 
-This stage always runs the same way regardless of MOCK_LLM.
+**Design Decision (one chunk per document):** each file is treated as one
+document chunk instead of splitting into smaller fixed-size pieces, since
+each policy doc is already a single short paragraph — splitting it further
+would just fragment one self-contained fact across multiple chunks. A
+metadata tag with the source filename is attached so we can trace results
+back to the original file.
+
+**Approach:** this stage always runs the same way regardless of MOCK_LLM.
 
 ### Stage 2 - Embedding and Storage (embed_store.py)
 
@@ -151,12 +157,14 @@ intents: policy_question or general_question.
 
 This stage branches on MOCK_LLM.
 
-Mock mode (MOCK_LLM unset or 1 - graded baseline):
+**Design Decision (keyword heuristic, not a real classifier, for the
+graded baseline):** Mock mode (MOCK_LLM unset or 1 - graded baseline):
 classify_intent checks if any keyword from the zepto_topics list appears
 in the lowercased query. Keywords are: delivery, return, refund,
 membership, tracking, cancel, gift card, support hours. If any keyword
 matches the intent is policy_question, otherwise general_question. No
-LLM call is made.
+LLM call is made — this keeps classification fully deterministic and free
+of any API dependency.
 
 Real LLM mode (MOCK_LLM=0 - optional extension):
 classify_intent sends the query to llama3-8b-8192 on Groq and asks it
@@ -183,11 +191,13 @@ matched chunk and returns "Based on the retrieved context: [snippet]".
 Sources are the ChromaDB document IDs of the retrieved chunks. Confidence
 is 1.0. No LLM call.
 
-Real LLM mode (optional extension): the top 3 chunks are joined and
-passed to ZEPTO_SUPPORT_PROMPT in llm_utils.py, then sent to Groq.
-The raw JSON response is validated against FinalAnswerSchema. If it
-fails, the code retries up to 2 more times with a corrective instruction
-before returning an error response.
+**Design Decision (retry-on-validation-failure):** Real LLM mode (optional
+extension): the top 3 chunks are joined and passed to ZEPTO_SUPPORT_PROMPT
+in llm_utils.py, then sent to Groq. The raw JSON response is validated
+against FinalAnswerSchema. If it fails, the code retries up to 2 more times
+with a corrective instruction appended to the message history before giving
+up and returning a clearly marked error response — so a single malformed
+LLM response never crashes the endpoint.
 
 For general questions, direct_answer returns the fixed canned string
 "I can only answer questions about Zepto policies right now." in mock
