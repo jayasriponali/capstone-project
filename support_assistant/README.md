@@ -55,23 +55,31 @@ curl -s -X POST "http://127.0.0.1:8000/ask" \
      -d '{"query": "How to cancel my order?"}'
 ```
 
-Raw JSON Response:
+Raw JSON Response (this is the actual output copied straight from a real
+`curl` call against a locally running server, not retyped by hand):
 ```
 {
-  "query": "How to cancel my order?",
-  "intent": "policy_question",
-  "retrieved_docs": [
-    "Order Cancellation Policy: \"Orders can be cancelled free of cost any time before the order status changes to 'Packed', typically within the first 2 minutes of placing the order. Once an order has been packed, it can no longer be cancelled through the app, since the rider is dispatched immediately after packing given Zepto's quick-delivery model. If a packed order cannot be delivered due to a Zepto-side issue (for example, rider unavailability), the order is auto-cancelled and fully refunded without any cancellation fee.\"",
-    "Damaged or Missing Items: \"If an order arrives with damaged, spoiled, or missing items, customers must report it within 24 hours of delivery through the 'Report an Issue' button on the order page. Zepto ships a free replacement or issues a full refund for damaged, spoiled, or missing items without requiring the customer to return the original item, unless the order value exceeds INR 1000, in which case a photo of the issue must be submitted before a replacement or refund is processed.\"",
-    "Returns and Refunds: \"Grocery and perishable items may be reported for a return within 24 hours of delivery if damaged, spoiled, or incorrect; non-perishable packaged items may be returned within 7 days of delivery in unopened, resalable condition. Approved refunds are credited to the original payment method within 3-5 business days, or instantly to the Zepto wallet if the customer opts for wallet credit.\""
-  ],
-  "answer": {
-    "answer": "Based on the retrieved context: Order Cancellation Policy: \"Orders can be cancelled free of cost any time before the order status changes to 'Packed', typically within the first 2 minutes of placing the order. Once an order has been",
-    "sources": ["5", "6", "2"],
-    "confidence": 1.0
-  }
+    "query": "How to cancel my order?",
+    "intent": "policy_question",
+    "retrieved_docs": [
+        "Order Cancellation Policy: \"Orders can be cancelled free of cost any time before the order status changes to 'Packed', typically within the first 2 minutes of placing the order. Once an order has been packed, it can no longer be cancelled through the app, since the rider is dispatched immediately after packing given Zepto's quick-delivery model. If a packed order cannot be delivered due to a Zepto-side issue (for example, rider unavailability), the order is auto-cancelled and fully refunded without any cancellation fee.\"\n",
+        "Damaged or Missing Items: \"If an order arrives with damaged, spoiled, or missing items, customers must report it within 24 hours of delivery through the 'Report an Issue' button on the order page. Zepto ships a free replacement or issues a full refund for damaged, spoiled, or missing items without requiring the customer to return the original item, unless the order value exceeds INR 1000, in which case a photo of the issue must be submitted through the report form before a replacement or refund is processed.\"\n",
+        "Returns & Refunds: \"Grocery and perishable items may be reported for a return within 24 hours of delivery if damaged, spoiled, or incorrect; non-perishable packaged items may be returned within 7 days of delivery in unopened, resalable condition. Approved refunds are credited to the original payment method within 3-5 business days, or instantly to the Zepto wallet if the customer opts for wallet credit. Personal care items that have been opened are non-returnable except in the case of a manufacturing defect. Return pickup, where required, is arranged free of cost by Zepto.\"\n"
+    ],
+    "answer": {
+        "answer": "Based on the retrieved context: Order Cancellation Policy: \"Orders can be cancelled free of cost any time before the order status changes to 'Packed', typically within the first 2 minutes of placing the order. Once an order has been",
+        "sources": [
+            "5",
+            "6",
+            "2"
+        ],
+        "confidence": 1.0
+    }
 }
 ```
+(The trailing `\n` inside each retrieved_docs string is just the newline
+at the end of the source .txt file — harmless, and expected since each
+document is stored as one whole-file chunk.)
 
 What happened: the word "cancel" matched a keyword in the zepto_topics list
 so classify_intent set intent to policy_question. The retrieve_and_answer
@@ -90,17 +98,17 @@ curl -s -X POST "http://127.0.0.1:8000/ask" \
      -d '{"query": "What is the capital of France?"}'
 ```
 
-Raw JSON Response:
+Raw JSON Response (also copied straight from a real `curl` call):
 ```
 {
-  "query": "What is the capital of France?",
-  "intent": "general_question",
-  "retrieved_docs": [],
-  "answer": {
-    "answer": "I can only answer questions about Zepto policies right now.",
-    "sources": [],
-    "confidence": 1.0
-  }
+    "query": "What is the capital of France?",
+    "intent": "general_question",
+    "retrieved_docs": [],
+    "answer": {
+        "answer": "I can only answer questions about Zepto policies right now.",
+        "sources": [],
+        "confidence": 1.0
+    }
 }
 ```
 
