@@ -576,4 +576,9 @@ test split.
 02_modeling.ipynb is the notebook for all machine learning tasks.
 titanic.csv is the saved offline backup of the loaded dataset.
 titanic_survival_pipeline.pkl is the saved trained pipeline ready for deployment.
+charts/ holds a PNG export of every chart in both notebooks (all 10 EDA
+charts from Section 3-5, the decision tree from Section 9, the ROC curve
+from Section 10, and the residual plot from Section 13), saved automatically
+via plt.savefig() right before each plt.show() call, so the charts are
+available as standalone image files and not just embedded notebook outputs.
 README.md is this file explaining every section of the project.
